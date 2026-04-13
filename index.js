@@ -15,13 +15,27 @@ app.get("/",(req,res) => {
     res.render("index.ejs");
 });
 
+app.get("/suggestions", async (req,res) =>{
+    const query = req.query.q;
+    try {
+        const response = await axios.get(`http://api.openweathermap.org/geo/1.0/direct?q=${query}&limit=5&appid=${process.env.WEATHER_API_KEY}`);
+        res.json(response.data)
+    } catch (error) {
+        res.json([])
+    }
+});
+
 app.post("/getdata", getdata);
 
 async function getdata(req,res)  {
     const location = req.body.city
-    const weatherdata = await CallApi(location)
-    console.log(weatherdata.data)
-    res.render("index.ejs", { weather : weatherdata.data })
+    try{
+        const weatherdata = await CallApi(location);
+        console.log(weatherdata.data)
+        res.render("index.ejs", { weather : weatherdata.data, error: null });    
+    } catch (error) {
+        res.render("index.ejs", { weather : undefined, error: "city not found please check the spelling." });
+    }
     
 }
 async function CallApi(location){

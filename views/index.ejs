@@ -5,13 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weather App</title>
     <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <h1>Today Weather</h1>
-    <form action="/getdata" method="post">
+
+    
+    <!-- <form action="/getdata" method="post">
         <input type ="text" name="city" placeholder="enter the city name"/>
         <button type="submit">Search</button>
+    </form> -->
+
+    <form action="/getdata" method="post">
+        <div style="position: relative;">
+            <input 
+                type="text" 
+                name="city" 
+                id="cityInput"
+                placeholder="enter the city name"
+                autocomplete="off"
+            />
+            <ul id="suggestionsList" style="
+                position: absolute;
+                background: white;
+                border: 1px solid #ccc;
+                list-style: none;
+                padding: 0;
+                margin: 0;
+                width: 100%;
+                z-index: 999;
+            "></ul>
+        </div>
+        <button type="submit">Search</button>
     </form>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+        <p style="color: red;"><%= error %></p>
+    <% } %>
+
     <% if (typeof weather !== 'undefined') { %>
         <div class="weather-card">
             <h2><%= weather.name %></h2>
@@ -22,6 +54,63 @@
             <p>Temp_Max: <%= (weather.main.temp_max -273.15).toFixed(1) %>°C</p>
             <p>Temp_Min: <%= (weather.main.temp_min -273.15).toFixed(1) %>°C</p>
         </div>
+        <div id="map" style="height: 300px; width: 100%; margin-top: 15px; border-radius: 10px;"></div>
     <% } %>
+
+    <script>
+        const input = document.getElementById("cityInput");
+        const list = document.getElementById("suggestionsList");
+
+    <% if (typeof weather !== 'undefined') { %>
+        const lat = <%= weather.coord.lat %>;
+        const lon = <%= weather.coord.lon %>;
+        const cityName = "<%= weather.name %>";
+
+        const map = L.map('map').setView([lat, lon], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        L.marker([lat, lon])
+            .addTo(map)
+            .bindPopup(cityName)
+            .openPopup();
+
+        map.on('click', function(e) {
+            const clickLat = e.latlng.lat;
+            const clickLon = e.latlng.lng;
+    
+            L.marker([clickLat, clickLon])
+                .addTo(map)
+                .bindPopup(`📍 ${clickLat.toFixed(4)}, ${clickLon.toFixed(4)}`)
+                .openPopup();
+        });
+    <% } %>
+    
+        input.addEventListener("input", async function() {
+            const query = input.value;
+    
+            if (query.length < 2) {
+                list.innerHTML = "";
+                return;
+            }
+    
+            const response = await fetch(`/suggestions?q=${query}`);
+            const cities = await response.json();
+    
+            list.innerHTML = "";
+    
+            cities.forEach(city => {
+                const li = document.createElement("li");
+                li.textContent = `${city.name} ${city.state ? ', ' + city.state : ''}, ${city.country}`;
+                li.style.padding = "8px";
+                li.style.cursor = "pointer";
+                li.addEventListener("click", function() {
+                    input.value = city.name;
+                    list.innerHTML = "";
+                });
+                list.appendChild(li);
+            });
+        });
+    </script>
 </body>
 </html>
